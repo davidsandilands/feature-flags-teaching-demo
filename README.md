@@ -101,7 +101,7 @@ A guarded rollout releases a variation in stages while it watches a metric. Here
 
 Set up once:
 
-1. Create a flag called `checkout-v2` with **Boolean** variations. Only the server-side script uses it.
+1. Create a flag called `checkout-v2` with **Boolean** variations, and check that its key is exactly `checkout-v2`: the script evaluates that key, and a flag's key can't be changed later. Only the server-side script uses this flag.
 2. Create the metric: open the **Data** section, go to **Metrics**, and click **Create metric**.
    - Event kind **Custom**, event key `checkout-latency`.
    - In the metric definition, choose **Average**, keep the analysis unit as `user`, and choose **Lower is better**.
@@ -114,7 +114,7 @@ Run it:
 1. Edit the **Default rule** and choose **Guarded rollout** from the **Serve** menu, releasing `true`:
    - Metric to monitor: `checkout-latency`, with **Automatic rollback** ticked.
    - **Target by**: `user`.
-   - **Rollout duration**: set a custom schedule with a first stage of **10%** that lasts at least 5 minutes. LaunchDarkly needs at least 10 contexts on each variation before it can call a regression, and 10% of 600 is about 60.
+   - **Rollout duration**: set a custom schedule with a first stage of **10%** that lasts at least 5 minutes. LaunchDarkly needs at least 10 contexts on each variation before it can call a regression. In testing, a 10% first stage put about 5% of the 600 contexts (30 to 40) on the new variation, which is plenty.
    - Save. The health check shows **Health check waiting** until traffic arrives. That's expected.
 2. Start the traffic:
 
@@ -123,7 +123,7 @@ Run it:
    ```
 
    For each made-up context, the script evaluates `checkout-v2` and then tracks `checkout-latency` for the same context: about 900 ms on the new checkout, 120 ms on the old one. The progress line shows both, and how many contexts got each.
-3. Watch the flag's **Monitoring** tab. LaunchDarkly checks for a regression about every 10 seconds. Once each variation has enough data, it flags `checkout-latency` as a regression and rolls the flag back to `false`.
+3. Watch the flag's **Monitoring** tab. LaunchDarkly checks for a regression about every 10 seconds. Once each variation has enough data, it flags `checkout-latency` as a regression and rolls the flag back to `false`. In testing, that happened within a minute of the script starting.
 
 To run it again, start a new guarded rollout first, then the script. Each run uses fresh context keys, so earlier runs never count. To send more traffic, add a count and a rate: `npm run traffic -- latency 1200 40` sends 1,200 contexts at 40 a second.
 
@@ -144,7 +144,7 @@ AgentControl configs (formerly AI Configs) work like flags for AI: LaunchDarkly 
 Set up once:
 
 1. In the left sidebar, click **Agents**, then **Configs**, and create a **Completion** config named `support-assistant`. Check that the key is `support-assistant`.
-2. On the **Variations** tab, create two variations named exactly `concise` and `verbose` (the scripts look for these keys). Give both the Anthropic model `claude-opus-5-5`. If it isn't in the **Select a model** list, choose **Add a model** and enter the model ID. Then give each one a **system** message:
+2. On the **Variations** tab, create two variations named exactly `concise` and `verbose` (the scripts look for these keys). Give both the Anthropic model `claude-opus-5-5`. If it isn't in the **Select a model** list, choose **Add a model** and enter the model ID. Then set each one's **system** message, replacing any text already there:
    - `concise`: `You are the support assistant for a small online shop. Answer in at most two sentences.`
    - `verbose`: the deliberately absurd prompt below.
 3. On the **Targeting** tab, set the **Default rule** to serve `concise`, and save.
@@ -210,6 +210,7 @@ The values in the context form are sent to LaunchDarkly and appear on its **Cont
 - **The banner never turns on**: check that you are changing the flag in the same environment as your client-side ID, and that the flag is available to client-side SDKs.
 - **The banner doesn't follow a new key**: press Enter or Tab after typing. The page calls `identify()` when a field changes, and a text box only reports a change when you leave it or press Enter.
 - **Port 3000 is busy**: run `PORT=3001 npm start`.
+- **The traffic progress line only ever shows `old` (or `concise`)**: the guarded rollout hasn't started yet, or the flag or config key doesn't match exactly.
 - **`npm start` or `npm run traffic` says it could not connect**: `LD_SDK_KEY` must be the **SDK key** (it starts with `sdk-`) for the same environment.
 - **The chat says the assistant is switched off**: check that the config key is `support-assistant` and that its default rule serves a variation.
 - **The chat says "Something went wrong"**: the message comes from the model call. A 401 means `MODEL_API_KEY` isn't a valid Anthropic API key. Clear it to go back to echo mode.
