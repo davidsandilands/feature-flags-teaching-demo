@@ -12,6 +12,7 @@ A small, readable Node.js demo of [LaunchDarkly](https://launchdarkly.com) featu
 | [`public/index.html`](public/index.html) | The page: a context form and a banner, using the LaunchDarkly JavaScript (browser) SDK |
 | [`server.js`](server.js) | A small Express server: serves the page and the browser SDK, and answers the chat box using the server-side SDK, the AI SDK and Claude |
 | [`scripts/traffic.js`](scripts/traffic.js) | Sends synthetic traffic for the two guarded rollouts (steps 4 and 7), using the Node.js server-side SDK and the AI SDK |
+| [`slides/`](slides/LaunchDarkly_Feature_Flags_Edinburgh.pdf) | The slides from the talk, as a PDF |
 
 ## Set up (about 15 minutes)
 
