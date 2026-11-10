@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Feature flags demo</title>
+  <style>
+    body { font: 20px/1.5 system-ui, sans-serif; max-width: 44rem; margin: 2rem auto; padding: 0 1rem; color: #1b1b1f; background: #fff; }
+    #banner { padding: 1rem 1.25rem; border-radius: 12px; background: linear-gradient(90deg, #405bff, #a34fde); color: #fff; font-weight: 600; }
+    #flag-state { color: #555; }
+    fieldset { border: 1px solid #ccc; border-radius: 12px; padding: 1rem 1.25rem; }
+    label { display: grid; grid-template-columns: 6rem 14rem; align-items: center; margin: 0.4rem 0; }
+    input, select, button { font: inherit; padding: 0.2rem 0.4rem; }
+    #chat input { width: 26rem; max-width: 70%; }
+    #reply { white-space: pre-wrap; }
+    #reply-meta { color: #555; font-size: 0.8em; }
+  </style>
+</head>
+<body>
+  <h1>Feature flags demo</h1>
+  <p id="banner" hidden>👋 Welcome! This banner is behind the <code>welcome-banner</code> flag.</p>
+  <p id="flag-state">Connecting to LaunchDarkly…</p>
+
+  <!-- This form is the context: who is using the app. Use made-up values: they are sent to LaunchDarkly. -->
+  <form id="context">
+    <fieldset>
+      <legend>Context (kind: user)</legend>
+      <label>key <input name="key" value="student-1"></label>
+      <label>country
+        <select name="country"><option>GB</option><option>US</option><option>IN</option><option>CN</option><option>DE</option></select>
+      </label>
+      <label>plan
+        <select name="plan"><option>free</option><option>student</option><option>pro</option></select>
+      </label>
+    </fieldset>
+  </form>
+
+  <!-- The chat sends your message with the context above. The server asks LaunchDarkly for support-assistant. -->
+  <form id="chat">
+    <fieldset>
+      <legend>Support assistant (AgentControl config: support-assistant)</legend>
+      <input name="message" placeholder="Ask the assistant a question" required> <button>Send</button>
+      <p id="reply"></p>
+      <p id="reply-meta"></p>
+    </fieldset>
+  </form>
+
+  <script type="module">
+    import { createClient } from '/sdk/index.js';
+
+    const form = document.querySelector('#context');
+    const banner = document.querySelector('#banner');
+    const flagState = document.querySelector('#flag-state');
+    const chat = document.querySelector('#chat');
+    const reply = document.querySelector('#reply');
+    const replyMeta = document.querySelector('#reply-meta');
+
+    // A context describes who is using the app. Targeting rules match on its attributes.
+    function currentContext() {
+      return { kind: 'user', key: form.key.value, country: form.country.value, plan: form.plan.value };
+    }
+
+    // Evaluate the flag for the current context. false is the fallback if LaunchDarkly can't be reached.
+    function render() {
+      const showBanner = client.boolVariation('welcome-banner', false);
+      banner.hidden = !showBanner;
+      flagState.textContent = `welcome-banner is ${showBanner ? 'ON' : 'OFF'} for ${form.key.value}`;
+    }
+
+    // The server reads the client-side ID from .env
+    const { clientSideId } = await fetch('/api/config').then((res) => res.json());
+
+    // 1. Create the client with the context from the form, start it, and wait up to 5 seconds for flag values
+    const client = createClient(clientSideId, currentContext());
+    client.start();
+    const { status } = await client.waitForInitialization({ timeout: 5 });
+    render();
+    if (status !== 'complete') flagState.textContent += ` (SDK ${status}: this is the fallback value)`;
+
+    // 2. Subscribing to a flag's changes opens a streaming connection: toggle it and the banner follows, no reload
+    client.on('change:welcome-banner', render);
+
+    // 3. Changing the form switches context: identify() fetches the flag values for the new context
+    form.addEventListener('change', async () => {
+      await client.identify(currentContext());
+      render();
+    });
+    form.addEventListener('submit', (event) => event.preventDefault());
+
+    // 4. The chat posts the message AND the current context, so LaunchDarkly can target the AI config too
+    chat.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      reply.textContent = 'Asking…';
+      replyMeta.textContent = '';
+      const res = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: chat.message.value, context: currentContext() }),
+      });
+      const answer = await res.json();
+      reply.textContent = answer.reply;
+      if (answer.tokens) {
+        const estimate = answer.estimated ? ' (estimated)' : '';
+        replyMeta.textContent = `variation: ${answer.variation} | model: ${answer.model} | ${answer.tokens.total} tokens${estimate}`;
+      }
+    });
+  </script>
+</body>
+</html>

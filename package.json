@@ -1,0 +1,22 @@
+{
+  "name": "feature-flags-teaching-demo",
+  "version": "1.0.0",
+  "description": "A small, readable LaunchDarkly feature flags demo for a student talk. Unofficial; not a supported LaunchDarkly product.",
+  "private": true,
+  "type": "module",
+  "license": "MIT",
+  "engines": {
+    "node": ">=20.6"
+  },
+  "scripts": {
+    "start": "node --env-file=.env server.js",
+    "traffic": "node --env-file=.env scripts/traffic.js"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^1.7.0",
+    "@launchdarkly/js-client-sdk": "^4.14.2",
+    "@launchdarkly/node-server-sdk": "^9.16.4",
+    "@launchdarkly/server-sdk-ai": "^2.0.20",
+    "express": "^5.3.0"
+  }
+}
