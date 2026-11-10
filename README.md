@@ -21,9 +21,11 @@ You need Node.js 20.6 or newer (`node --version`) and a LaunchDarkly account. A 
 
 A new LaunchDarkly account starts with a *Default* project that has **Production** and **Test** environments. Use **Test**. To keep the demo apart from anything else, create a project instead: click the **gear** icon, then **All projects**, then **Create project**.
 
-### 2. Copy your keys into `.env`
+### 2. Get the code and add your keys
 
 ```bash
+git clone https://github.com/davidsandilands/feature-flags-teaching-demo.git
+cd feature-flags-teaching-demo
 npm install
 cp .env.example .env
 ```
